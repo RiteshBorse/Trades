@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Advanced Trade Simulation</title>
+    <link
+      href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap"
+      rel="stylesheet"
+    />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+      body {
+        font-family: "Roboto", sans-serif;
+        margin: 0;
+        padding: 0;
+        background-color: #f5f7fa;
+        color: #333;
+      }
+      .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+      }
+      h1 {
+        color: #2c3e50;
+        text-align: center;
+        margin-bottom: 30px;
+      }
+      .input-group {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        margin-bottom: 20px;
+      }
+      .input-item {
+        flex-basis: calc(33.333% - 10px);
+        margin: 15px;
+      }
+      label {
+        display: block;
+        margin-bottom: 5px;
+        font-weight: bold;
+        color: #34495e;
+      }
+      input {
+        width: 100%;
+        padding: 10px;
+        border: 1px solid #bdc3c7;
+        border-radius: 4px;
+        font-size: 16px;
+      }
+      button {
+        display: block;
+        width: 100%;
+        padding: 12px;
+        background-color: #3498db;
+        color: white;
+        border: none;
+        border-radius: 4px;
+        font-size: 18px;
+        cursor: pointer;
+        transition: background-color 0.3s;
+      }
+      button:hover {
+        background-color: #2980b9;
+      }
+      #output {
+        margin-top: 30px;
+      }
+      .chart-container {
+        margin-bottom: 30px;
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+        background-color: white;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      th,
+      td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ecf0f1;
+      }
+      th {
+        background-color: #34495e;
+        color: white;
+      }
+      tr:nth-child(even) {
+        background-color: #f8f9fa;
+      }
+      .summary {
+        background-color: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+      }
+      .summary h2 {
+        color: #2c3e50;
+        margin-bottom: 15px;
+      }
+      .summary p {
+        margin-bottom: 10px;
+      }
+      .win {
+        color: #27ae60;
+      }
+      .loss {
+        color: #c0392b;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Advanced Trade Simulation</h1>
+      <div class="input-group">
+        <div class="input-item">
+          <label for="accountSize">Initial Account Size:</label>
+          <input type="number" id="accountSize" value="200000" />
+        </div>
+        <div class="input-item">
+          <label for="riskPercent">Risk per Trade (%):</label>
+          <input type="number" id="riskPercent" value="2" />
+        </div>
+        <div class="input-item">
+          <label for="winRate">Win Rate (%):</label>
+          <input type="number" id="winRate" value="40" />
+        </div>
+        <div class="input-item">
+          <label for="numTrades">Number of Trades:</label>
+          <input type="number" id="numTrades" value="10" />
+        </div>
+        <div class="input-item">
+          <label for="rMultiple">R Multiple:</label>
+          <input type="number" id="rMultiple" value="1" />
+        </div>
+        <div class="input-item">
+          <button onclick="simulateTrades()">Simulate Trades</button>
+        </div>
+      </div>
+
+      <div id="output">
+        <div class="chart-container">
+          <canvas id="tradeChart"></canvas>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      let chart;
+
+      function simulateTrades() {
+        let initialAccountSize = parseFloat(
+          document.getElementById("accountSize").value
+        );
+        let riskPercent = parseFloat(
+          document.getElementById("riskPercent").value
+        );
+        let winRate =
+          parseFloat(document.getElementById("winRate").value) / 100;
+        let numTrades = parseInt(document.getElementById("numTrades").value);
+        let rMultiple = parseFloat(document.getElementById("rMultiple").value);
+
+        let trades = [];
+        let accountSize = initialAccountSize;
+        let riskAmount = accountSize * (riskPercent / 100);
+        let rewardAmount = riskAmount * rMultiple;
+
+        let winTrades = 0,
+          lossTrades = 0;
+        let currentWinStreak = 0,
+          maxWinStreak = 0;
+        let currentLossStreak = 0,
+          maxLossStreak = 0;
+        let maxDrawdown = 0;
+        let peakAccountSize = accountSize;
+        let netProfit = 0;
+
+        for (let i = 1; i <= numTrades; i++) {
+          if (accountSize <= 0) {
+            break;
+          }
+          let win = Math.random() < winRate;
+          let profitLoss = win ? rewardAmount : -riskAmount;
+
+          accountSize += profitLoss;
+          netProfit += profitLoss;
+
+          if (win) {
+            winTrades++;
+            currentWinStreak++;
+            currentLossStreak = 0;
+            maxWinStreak = Math.max(maxWinStreak, currentWinStreak);
+          } else {
+            lossTrades++;
+            currentLossStreak++;
+            currentWinStreak = 0;
+            maxLossStreak = Math.max(maxLossStreak, currentLossStreak);
+          }
+
+          if (accountSize > peakAccountSize) {
+            peakAccountSize = accountSize;
+          } else {
+            let drawdown = peakAccountSize - accountSize;
+            maxDrawdown = Math.max(maxDrawdown, drawdown);
+          }
+
+          trades.push({
+            tradeNumber: i,
+            accountSize: accountSize,
+            profitLoss: profitLoss,
+            win: win,
+          });
+        }
+
+        displayResults(
+          trades,
+          winTrades,
+          lossTrades,
+          maxWinStreak,
+          maxLossStreak,
+          maxDrawdown,
+          netProfit,
+          initialAccountSize
+        );
+      }
+
+      function displayResults(
+        trades,
+        winTrades,
+        lossTrades,
+        maxWinStreak,
+        maxLossStreak,
+        maxDrawdown,
+        netProfit,
+        initialAccountSize
+      ) {
+        let output = `
+        <div class="chart-container">
+          <canvas id="tradeChart"></canvas>
+        </div>
+        <table>
+          <tr>
+            <th>Trade #</th>
+            <th>Account Size</th>
+            <th>Profit/Loss</th>
+            <th>Result</th>
+          </tr>`;
+
+        trades.forEach((trade) => {
+          output += `
+          <tr>
+            <td>${trade.tradeNumber}</td>
+            <td>₹${trade.accountSize.toFixed(2)}</td>
+            <td class="${trade.profitLoss >= 0 ? "win" : "loss"}">${
+            trade.profitLoss >= 0 ? "+" : ""
+          }₹${Math.abs(trade.profitLoss).toFixed(2)}</td>
+            <td class="${trade.win ? "win" : "loss"}">${
+            trade.win ? "Win" : "Loss"
+          }</td>
+          </tr>`;
+        });
+
+        output += `</table><div class="summary">
+        <h2>Trade Report Summary</h2>
+        <p>Total Number of Trades: ${trades.length}</p>
+        <p>Number of Winning Trades: ${winTrades}</p>
+        <p>Number of Losing Trades: ${lossTrades}</p>
+        <p>Maximum Winning Streak: ${maxWinStreak}</p>
+        <p>Maximum Losing Streak: ${maxLossStreak}</p>
+        <p>Maximum Drawdown: ₹${maxDrawdown.toFixed(2)}</p>
+        <p>Total Net Profit: ₹${netProfit.toFixed(2)}</p>
+        <p>Final Account Balance: ₹${trades[
+          trades.length - 1
+        ].accountSize.toFixed(2)}</p>
+        <p>Return on Investment: ${(
+          ((trades[trades.length - 1].accountSize - initialAccountSize) /
+            initialAccountSize) *
+          100
+        ).toFixed(2)}%</p>
+      </div>`;
+
+        document.getElementById("output").innerHTML = output;
+
+        createChart(trades);
+      }
+
+      function createChart(trades) {
+        const ctx = document.getElementById("tradeChart").getContext("2d");
+
+        if (chart) {
+          chart.destroy();
+        }
+
+        chart = new Chart(ctx, {
+          type: "line",
+          data: {
+            labels: trades.map((trade) => `Trade ${trade.tradeNumber}`),
+            datasets: [
+              {
+                label: "Account Balance",
+                data: trades.map((trade) => trade.accountSize),
+                borderColor: "rgb(75, 192, 192)",
+                tension: 0.1,
+              },
+            ],
+          },
+          options: {
+            responsive: true,
+            plugins: {
+              title: {
+                display: true,
+                text: "Account Balance Over Time",
+              },
+            },
+            scales: {
+              y: {
+                beginAtZero: false,
+                title: {
+                  display: true,
+                  text: "Account Balance (₹)",
+                },
+              },
+              x: {
+                title: {
+                  display: true,
+                  text: "Trade Number",
+                },
+              },
+            },
+          },
+        });
+      }
+    </script>
+  </body>
+</html>
